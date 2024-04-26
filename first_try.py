@@ -1,4 +1,10 @@
-from neo4j import *
+from neo4j import GraphDatabase
+import pandas as pd
+
+"""
+This script can query the database to get subject_id from the biological_sample and the name from the disease node
+and saves the subject_id in one col and 0 for control or 1 for diseased in an other col to a csv.
+"""
 
 class Neo4jConnection:
     def __init__(self, uri, user, password, database):
@@ -20,12 +26,22 @@ database = "graph2.db"
 
 conn = Neo4jConnection(uri, user, password, database)
 
-query = "MATCH (n) RETURN n LIMIT 10"
+#"MATCH (bs:Biological_sample)-[r:HAS_DISEASE]->(d:Disease) RETURN bs,r,d" # training data query without 
+query = "MATCH (bs:Biological_sample)-[r:HAS_DISEASE]->(d:Disease) RETURN bs.subjectid,d.name"
 results = conn.run_query(query)
 
+subject_id = []
+disease = []
 
 for record in results:
-   print(record)
+    subject_id.append(record["bs.subjectid"])
+    if record["d.name"] == "control":
+        disease.append(0)
+    else:
+        disease.append(1)
 
+results_df = pd.DataFrame({"subject_id": subject_id, "disease":disease})
+
+results_df.to_csv("./data/training_data.csv", index=False)
 
 conn.close()
