@@ -1,0 +1,60 @@
+find the node representing Emil:
+  MATCH (ee:Person) WHERE ee.name = 'Emil' RETURN ee;
+
+    explanation:  MATCH specifies a pattern of nodes and relationships.
+                  (ee:Person) is a single node pattern with label Person. It assigns matches to the variable ee.
+                  WHERE filters the query.
+                  ee.name = 'Emil' compares name property to the value Emil.
+                  RETURN returns particular results.
+
+a pattern can be used to find Emil's friends:
+  MATCH (ee:Person)-[:KNOWS]-(friends) WHERE ee.name = 'Emil' RETURN ee, friends
+
+    explanation:   MATCH describes what nodes will be retrieved based upon the pattern.
+                  (ee) is the node reference that will be returned based upon the WHERE clause.
+                  -[:KNOWS]- matches the KNOWS relationships (in either direction) from ee.
+                  (friends) represents the nodes that are Emil's friends.
+                  RETURN returns the node, referenced here by (ee), and the related (friends) nodes found.
+
+more examples:
+
+Find the actor named "Tom Hanks":
+  MATCH (tom:Person {name: "Tom Hanks"}) RETURN tom
+
+Find the movie with title "Cloud Atlas":
+  MATCH (cloudAtlas:Movie {title: "Cloud Atlas"}) RETURN cloudAtlas
+
+Find 10 people and return their names:
+  MATCH (people:Person) RETURN people.name LIMIT 10
+
+Find movies released in the 1990s and return their titles:
+  MATCH (nineties:Movie) WHERE nineties.released >= 1990 AND nineties.released < 2000 RETURN nineties.title
+
+What movies did Tom Hanks act in? (with ACTED_IN being a relationship/edge)
+  MATCH (tom:Person {name: "Tom Hanks"})-[:ACTED_IN]->(tomHanksMovies) RETURN tom,tomHanksMovies
+
+Who directed "Cloud Atlas"? (with DIRECTED = edge)
+  MATCH (cloudAtlas:Movie {title: "Cloud Atlas"})<-[:DIRECTED]-(directors) RETURN directors.name
+
+Who were Tom Hanks' co-actors?
+  MATCH (tom:Person {name:"Tom Hanks"})-[:ACTED_IN]->(m)<-[:ACTED_IN]-(coActors) RETURN DISTINCT coActors.name
+
+How people are related to "Cloud Atlas"?
+  MATCH (people:Person)-[relatedTo]-(:Movie {title: "Cloud Atlas"}) RETURN people.name, Type(relatedTo), relatedTo.roles
+
+Use variable length patterns to find movies and actors up to 4 "hops" away from Kevin Bacon.
+  MATCH (bacon:Person {name:"Kevin Bacon"})-[*1..4]-(hollywood) RETURN DISTINCT hollywood
+
+Use the built-in shortestPath() algorithm to find the "Bacon Path" to Meg Ryan.
+  MATCH p=shortestPath((bacon:Person {name:"Kevin Bacon"})-[*]-(meg:Person {name:"Meg Ryan"})) RETURN p
+
+Extend Tom Hanks co-actors to find co-co-actors who have nоt worked with Tom Hanks.
+  MATCH (tom:Person {name:"Tom Hanks"})-[:ACTED_IN]->(m)<-[:ACTED_IN]-(coActors),
+    (coActors)-[:ACTED_IN]->(m2)<-[:ACTED_IN]-(cocoActors)
+  WHERE NOT (tom)-[:ACTED_IN]->()<-[:ACTED_IN]-(cocoActors) AND tom <> cocoActors
+  RETURN cocoActors.name AS Recommended, count(*) AS Strength ORDER BY Strength DESC
+
+Find someone who can introduce Tom Hanks to his potential co-actor, in this case Tom Cruise.
+  MATCH (tom:Person {name:"Tom Hanks"})-[:ACTED_IN]->(m)<-[:ACTED_IN]-(coActors),
+  (coActors)-[:ACTED_IN]->(m2)<-[:ACTED_IN]-(cruise:Person {name:"Tom Cruise"})
+  RETURN tom, m, coActors, m2, cruise
