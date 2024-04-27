@@ -1,0 +1,5 @@
+source,target,edge_type,node_types
+21,34,HAS_DAMAGE,Biological_sample
+56,27,HAS_DAMAGE,Biological_sample
+56,89,HAS_DAMAGE,Biological_sample
+31,58,HAS_DAMAGE,Biological_sample

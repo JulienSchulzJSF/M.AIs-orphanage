@@ -1,0 +1,5 @@
+source,target,edge_type,node_types
+21,44,HAS_PROTEIN,Biological_sample
+56,78,HAS_PROTEIN,Biological_sample
+56,3,HAS_PROTEIN,Biological_sample
+31,7,HAS_PROTEIN,Biological_sample
