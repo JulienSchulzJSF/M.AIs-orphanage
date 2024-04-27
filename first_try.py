@@ -1,3 +1,4 @@
+from typing import Tuple
 from neo4j import GraphDatabase
 import pandas as pd
 
@@ -18,33 +19,56 @@ class Neo4jConnection:
         with self.driver.session(database=self.database) as session:
             result = session.run(query)
             return [record for record in result]
+        
+def connect_to_db():
+    uri = "bolt://83.229.84.12:7687"
+    user = "tumaiReadonly"
+    password = "MAKEATHON2024"
+    database = "graph2.db"
+    conn = Neo4jConnection(uri, user, password, database)
+    return conn
 
-uri = "bolt://83.229.84.12:7687"
-user = "tumaiReadonly"
-password = "MAKEATHON2024"
-database = "graph2.db"
+def close_connection_to_db(database: Neo4jConnection):
+    database.close()
 
-conn = Neo4jConnection(uri, user, password, database)
+def parse_query_data(results: list) -> Tuple[list,list]:
+    """
+    Parses query data into list with
+    """
+    subject_id = []
+    disease = []
+    for record in results:
+        subject_id.append(record["bs.subjectid"])
+        if record["d.name"] == "control":
+            disease.append(0)
+        else:
+            disease.append(1)
+    return subject_id, disease
 
-get_train_data_query = "MATCH (bs:Biological_sample)-[r:HAS_DISEASE]->(d:Disease) WHERE NOT d.name 'control' RETURN bs,r,d"
-get_control_query = "MATCH (bs:Biological_sample)-[r:HAS_DISEASE]-> (d:Disease {name: 'control'}) RETURN bs,r,d"
+def result_to_csv(subject_id: list, disease: list, filename: str):
+    results_df = pd.DataFrame({"subject_id": subject_id, "disease":disease})
 
-# parse results from graph to csv
-get_results_query = "MATCH (bs:Biological_sample)-[r:HAS_DISEASE]->(d:Disease) RETURN bs.subjectid,d.name"
-results = conn.run_query(get_results_query)
+    results_df.to_csv("./data/"+filename, index=False)
 
-subject_id = []
-disease = []
+def extract_data(database: Neo4jConnection, query: str, filename: str):
+    results = database.run_query(query)
 
-for record in results:
-    subject_id.append(record["bs.subjectid"])
-    if record["d.name"] == "control":
-        disease.append(0)
-    else:
-        disease.append(1)
+    
 
-results_df = pd.DataFrame({"subject_id": subject_id, "disease":disease})
+    subject_id, disease = parse_query_data(results)
+    result_to_csv(subject_id, disease, filename)
 
-results_df.to_csv("./data/training_data.csv", index=False)
+if __name__ == "__main__":
+    get_train_query = "MATCH (bs:Biological_sample)-[r:HAS_DISEASE]->(d:Disease) WHERE NOT d.name = 'control' RETURN bs.subjectid,d.name"
+    get_control_query = "MATCH (bs:Biological_sample)-[r:HAS_DISEASE]-> (d:Disease {name: 'control'}) RETURN bs.subjectid,d.name"
+    get_results_query = "MATCH (bs:Biological_sample)-[r:HAS_DISEASE]->(d:Disease) RETURN bs.subjectid,d.name"
 
-conn.close()
+    database = connect_to_db()
+
+    extract_data(database, get_train_query, "train_data.csv")
+    extract_data(database, get_control_query, "control_data.csv")
+    extract_data(database, get_results_query, "results_data.csv")
+
+    close_connection_to_db(database)
+
+
