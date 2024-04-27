@@ -26,9 +26,12 @@ database = "graph2.db"
 
 conn = Neo4jConnection(uri, user, password, database)
 
-#"MATCH (bs:Biological_sample)-[r:HAS_DISEASE]->(d:Disease) RETURN bs,r,d" # training data query without 
-query = "MATCH (bs:Biological_sample)-[r:HAS_DISEASE]->(d:Disease) RETURN bs.subjectid,d.name"
-results = conn.run_query(query)
+get_train_data_query = "MATCH (bs:Biological_sample)-[r:HAS_DISEASE]->(d:Disease) WHERE NOT d.name 'control' RETURN bs,r,d"
+get_control_query = "MATCH (bs:Biological_sample)-[r:HAS_DISEASE]-> (d:Disease {name: 'control'}) RETURN bs,r,d"
+
+# parse results from graph to csv
+get_results_query = "MATCH (bs:Biological_sample)-[r:HAS_DISEASE]->(d:Disease) RETURN bs.subjectid,d.name"
+results = conn.run_query(get_results_query)
 
 subject_id = []
 disease = []
