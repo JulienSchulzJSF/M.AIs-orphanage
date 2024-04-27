@@ -17,20 +17,27 @@ class Neo4jConnection:
             return result
 
 # global variables
-node_type = {
-    "Biological_sample": 0,
-    "Gene": 1,
-    "Disease": 2,
-    "Protein": 3
+nodes = {
+    'Biological_sample': [],
+    'Protein': [],
+    'Gene': [],
+    'Disease': []
 }
 
-edge_type = {
-    "HAS_GENE": 0,
-    "HAS_DISEASE": 1,
-    "HAS_DAMAGE": 2,
-    "TRANSLATED_INTO": 3,
-    "ASSOCIATED_WITH": 4,
-    "IS_BIOMARKER_OF_DISEASE": 5,
+relationship_to_edge  = {
+    'HAS_DAMAGE': 'Biological_sample-Gene',
+    'HAS_PROTEIN': 'Biological_sample-Protein',
+    'TRANSLATED_INTO':'Gene-Protein',
+    'ASSOCIATED_WITH':'Protein-Disease-Associated',
+    'IS_BIOMARKER_OF_DISEASE':'Protein-Disease-Biomarker'
+}
+
+edges = {
+    'Biological_sample-Gene': [],
+    'Biological_sample-Protein': [],
+    'Gene-Protein': [],
+    'Protein-Disease-Associated': [],
+    'Protein-Disease-Biomarker': []
 }
 
 source_nodes = []
@@ -49,19 +56,30 @@ def connect_to_db() -> Neo4jConnection:
 def close_connection_to_db(database: Neo4jConnection):
     database.close()
 
-def query_db(driver: Driver, query:str):
-    with driver.session() as session:
-        result = session.run(query)
-    
-    return result
+def query_db(database: Neo4jConnection, query: str, filename: str):
+    results = database.run_query(query)
+    return results
 
-def convert_result_to_lists(result):
-    global source_nodes, target_nodes, edge_types, node_types, edge_type, node_type
+def convert_result_to_lists(result, nodes, edge):
+    global source_nodes, target_nodes, edge_types, node_types
     for record in result:
-        source_nodes.append(node_type[record["source"]])
-        target_nodes.append(node_type[record["target"]])
-        edge_types.append(edge_type[record["edge_type"]])
-        node_types.append(edge_type[record["node_type"][0]])  # Assuming each node has exactly one label
+        """source_ids =  nodes[record["source_type"][0]] 
+        target_ids =  nodes[record["target_type"][0]] 
+
+        if record["target"] not in target_ids:
+            target_ids.append(record["target"])
+            nodes[record["target_type"][0]] = target_ids
+        
+        if record["source"] not in source_ids:
+            source_ids.append(record["source"])
+            nodes[record["source_type"][0]] = source_ids
+        
+        edges[relationship_to_edge[record["edge_type"]]].append((record["source"],record["target"]))"""
+
+        source_nodes.append(record["source"])
+        target_nodes.append(record["target"])
+        edge_types.append(record["edge_type"])
+        node_types.append(record["node_type"][0])  # Assuming each node has exactly one label
 
 def create_data() -> Data:
     # lists to tensor
@@ -79,7 +97,7 @@ def runner_data_generation():
     conn = connect_to_db()
 
     # relationship bs to gene and protein
-    convert_result_to_lists(query_db(conn, "MATCH (bs:Biological_sample)-[r:HAS_PROTEIN|HAS_DAMAGE]-(related_node) RETURN id(bs) as source, labels(bs) as node_type,type(r) as edge_type, bs.features as node_features, id(related_node) as target"))
+    convert_result_to_lists(query_db(conn,"Biological_sample", "" "MATCH (bs:Biological_sample)-[r:HAS_PROTEIN|HAS_DAMAGE]-(related_node) RETURN id(bs) as source, labels(bs) as node_type,type(r) as edge_type, bs.features as node_features, id(related_node) as target"))
     # relationship gene to protein
     convert_result_to_lists(query_db(conn, "MATCH (g:Gene)-[r:TRANSLATED_INTO]-(p:Protein) RETURN id(g) as source, labels(g) as node_type,type(r) as edge_type, id(p) as target"))
     # relationship disease to protein
